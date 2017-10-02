@@ -9,12 +9,11 @@
  *	v0.1	Initial test version.
  *
  *COPYRIGHT:
- *	(c)2017 by Ron Moerman, https://electronicsworkbench.io, ron@electronicsworkbench.io.
  *	This program comes with ABSOLUTELY NO WARRANTY. Use at your own risk.
  *	This is free software, and you are welcome to redistribute it under certain
- *  conditions.
+ *   conditions.
  *	The program and its source code are published under the GNU General Public License
- *  (GPL). See http://www.gnu.org/licenses/gpl-3.0.txt for details.
+ *   (GPL). See http://www.gnu.org/licenses/gpl-3.0.txt for details.
  *
  * $File: main.cpp $
  * $Revision: 0.1 $
