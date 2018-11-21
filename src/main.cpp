@@ -7,21 +7,22 @@
  *
  *  Currently only tested on a Landys+Gyr 350 using DSMR v4, which produces a P1 telegram every 10s.
  *  An example telegram looks like:
+ * 
  *      /XMX5LGBBFFB231314239
  *
  *      1-3:0.2.8(42)                                           // DSMR version (4.2)
- *      0-0:1.0.0(180924132132S)                                // Timestamp (yymmddhhmmssS) S=Summer time
- *      0-0:96.1.1(4532323036303137363437393334353135)          // Serial number (ASCII)
- *      1-0:1.8.1(011522.839*kWh)                               // Consumption T1 tariff
- *      1-0:1.8.2(010310.991*kWh)                               // Consumption T2 tariff
- *      1-0:2.8.1(000000.000*kWh)                               // Return T1 tariff
- *      1-0:2.8.2(000000.000*kWh)                               // Return T2 tariff
+ *      0-0:1.0.0(181121094755W)                                // Timestamp (yymmddhhmmssS) S=Summer time, W=Winter time
+ *      0-0:96.1.1(4530303136303231363837393334353135)          // Serial number (ASCII) [changed for privacy/security]
+ *      1-0:1.8.1(012094.358*kWh)                               // Consumption T1 tariff
+ *      1-0:1.8.2(010777.944*kWh)                               // Consumption T2 tariff
+ *      1-0:2.8.1(000135.765*kWh)                               // Return T1 tariff
+ *      1-0:2.8.2(000263.244*kWh)                               // Return T2 tariff
  *      0-0:96.14.0(0002)                                       // Current tariff (T1 or T2)
- *      1-0:1.7.0(00.503*kW)                                    // Actual consumption all phases
- *      1-0:2.7.0(00.000*kW)                                    // Actual return all phases
+ *      1-0:1.7.0(00.000*kW)                                    // Actual consumption all phases
+ *      1-0:2.7.0(00.606*kW)                                    // Actual return all phases
  *      0-0:96.7.21(00015)
  *      0-0:96.7.9(00005)                                       // Number of long power failures in any phase
- *      1-0:99.97.0(5)(0-0:96.7.19)(170520130938S)(0000005627*s)(170325044014W)(0043178677*s) [truncated]
+ *      1-0:99.97.0(5)(0-0:96.7.19)(170520130938S)(0000005627*s)(170325044014W)(0043178677*s)(160417214213S)(0000002950*s)(151112223157W)(0000088450*s)(151111103556W)(0003079416*s)
  *      1-0:32.32.0(00002)
  *      1-0:52.32.0(00002)
  *      1-0:72.32.0(00002)
@@ -33,21 +34,21 @@
  *      1-0:31.7.0(001*A)
  *      1-0:51.7.0(001*A)
  *      1-0:71.7.0(001*A)
- *      1-0:21.7.0(00.086*kW)                                   // Actual consumption on L1
- *      1-0:41.7.0(00.250*kW)                                   // Actual consumption on L2
- *      1-0:61.7.0(00.166*kW)                                   // Actual consumption on L3
- *      1-0:22.7.0(00.000*kW)                                   // Actual return on L1
- *      1-0:42.7.0(00.000*kW)                                   // Actual return on L2
- *      1-0:62.7.0(00.000*kW)                                   // Actual return on L3
+ *      1-0:21.7.0(00.000*kW)                                   // Actual consumption on L1
+ *      1-0:41.7.0(00.000*kW)                                   // Actual consumption on L2
+ *      1-0:61.7.0(00.000*kW)                                   // Actual consumption on L3
+ *      1-0:22.7.0(00.293*kW)                                   // Actual return on L1
+ *      1-0:42.7.0(00.036*kW)                                   // Actual return on L2
+ *      1-0:62.7.0(00.277*kW)                                   // Actual return on L3
  *      0-1:24.1.0(003)                                         // Slave (Gas meter) device type
- *      0-1:96.1.0(4731303138333430313538383732343334)          // Gas meter serial number
- *      0-1:24.2.1(180924130000S)(04890.857*m3)                 // Gas meter time stamp + value
- *      !FCA6                                                   // CRC16 cehcksum of entire telegram (from / to !)
+ *      0-1:96.1.0(4731303138353430323538383730343135)          // Gas meter serial number [changed for privacy/security]
+ *      0-1:24.2.1(181121090000W)(05135.305*m3)                 // Gas meter time stamp + value
+ *      !5325                                                   // CRC16 cehcksum of entire telegram (from / to !)
  * 
  *  More details can be found here: https://electronicsworkbench.io/blog/smartmeter-1.
  * 
- *  The JSON object sent to MQTT has the following specs:
- *  - MQTT topic: sensor/dsmr
+ *  The JSON object sent to MQTT has the following model:
+ *  - MQTT topic: "sensor/dsmr"
  *  - MQTT message:
  *      {
  *        "dsmr": "42",
@@ -119,14 +120,14 @@
  *  See http://www.gnu.org/licenses/gpl-3.0.txt for details.
  *  Some parts are based on other open source code.
  *
- * $File: main.cpp $
- * $Revision: 0.6 $
- * $Date: Sunday, Oct 10, 2018 21:13 UTC $
+ *@file main.cpp
+ *@version 0.6
+ *@date Sunday, Oct 10, 2018 21:13 UTC
  *==================================================================================================*/
 
-/*==================================================================================================*
- *                                 I N C L U D E   H E A D E R S                                    *
- *==================================================================================================*/
+/*==================================================================================================*\
+|*                                 I N C L U D E   H E A D E R S                                    *|
+\*==================================================================================================*/
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
@@ -137,16 +138,16 @@
 #include <WiFiUdp.h>
 
 #include <TimeLib.h>
-#include <PubSubClient.h> //With increased MQTT packet size to 512
+#include <PubSubClient.h> //Increase MQTT_MAX_PACKET_SIZE to 512 (default 128) !!
 #include <ArduinoJson.h>
 #include <ctype.h>
 
 #include "CRC16.h"
 #include "secrets.h" //Contains all the super secret stuff!
 
-/*==================================================================================================*
- *                               G L O B A L   C O N S T A N T S                                    *
- *==================================================================================================*/
+/*==================================================================================================*\
+|*                               G L O B A L   C O N S T A N T S                                    *|
+\*==================================================================================================*/
 
 /*##########VVV ADAPT VALUES BELOW TO YOUR CONFIGURATION VVV##########*/
 
@@ -170,8 +171,8 @@ const PROGMEM char *MQTT_TOPIC = "sensor/dsmr"; //MQTT topic to create and publi
 #define OTA_PORT 8266 //This is the default port for Arduino OTA library.
 
 /*--- Debug/trace settings ---*/
-//#define P1_DEBUG                                                //Debug the P1 telegram handling
-//#define MQTT_DEBUG                                              //Debug the MQTT handling
+//#define P1_DEBUG   //Debug the P1 telegram handling
+//#define MQTT_DEBUG //Debug the MQTT handling
 
 /*##########^^^ ADAPT VALUES ABOVE TO YOUR CONFIGURATION ^^^##########*/
 
@@ -843,8 +844,12 @@ void DoTelegramLines(void)
 
         /*--- Send any updated smart meter values to MQTT broker ---*/
         if (bNew)
-            if (!PublishToTopic()) //Send updated data from this line
-                Serial.println(" MQTT Publish failed");
+            if (!PublishToTopic())
+            {
+                Serial.print(" MQTT Publish failed, state=");
+                Serial.print(hMqttClient.state());
+                Serial.println("");
+            }
     }
 }
 
