@@ -99,6 +99,7 @@
  * The advantage of using a nested JSON structure like above is that we can add
  * elements without affecting existing logic to extract values. 
  *
+ * NOTE:
  * The default MQTT packet size of the used Arduino PubSubClient library is too small for
  * the messages we are sending. Increase it to 256 in the PubSubClient.h file.
  * Be aware that adding a '#define MQTT_MAX_PACKET_SIZE' it to this source file before the include
@@ -112,6 +113,8 @@
  *  v0.4    Adapted to recompiled Arduino PubSubClient library for larger packet size (up to 256).
  *  v0.5    Added extra fields to MQTT message, cleanup of the code and some extra comments.
  *  v0.6    Extended StaticJsonBuffer to fix overflow issue resulting in last value not being sent.
+ *  v0.7    Changed WiFi network to new Unifi AP's (Gondolin) and increased serial buffer for extra
+ *          long power outage line (202 characters).
  *
  *COPYRIGHT:
  *	This program comes with ABSOLUTELY NO WARRANTY. Use at your own risk.
@@ -157,48 +160,48 @@ const char *WIFI_PWD = SECRET_WIFI_PWD;
 
 /*--- MQTT connection parameters ---*/
 const PROGMEM char *MQTT_CLIENT_ID = "dsmrv4";      //MQTT Client ID
-const PROGMEM char *MQTT_SERVER = "192.168.1.2";    //MQTT Server (Mosquitto)
+const PROGMEM char *MQTT_SERVER = "192.168.2.2";    //MQTT Server (Mosquitto)
 const PROGMEM unsigned int MQTT_SERVER_PORT = 1883; //Port# on the MQTT Server
 const PROGMEM char *MQTT_USER = SECRET_MQTT_USER;   //Authentication for the MQTT Server
 const PROGMEM char *MQTT_PWD = SECRET_MQTT_PWD;
-const PROGMEM char *MQTT_TOPIC = "sensor/dsmr"; //MQTT topic to create and publish to
+const PROGMEM char *MQTT_TOPIC = "sensor/dsmr";     //MQTT topic to create and publish to
 
 /*--- Define serial input ---*/
-#define SERIAL_RX D5    //P1 serial input pin
-#define BAUDRATE 115200 //DSMRv4 runs P1 port at 115,200 baud (8N1)
+#define SERIAL_RX D5                                //P1 serial input pin
+#define BAUDRATE 115200                             //DSMRv4 runs P1 port at 115,200 baud (8N1)
 
 /*--- Define OTA port ---*/
-#define OTA_PORT 8266 //This is the default port for Arduino OTA library.
+#define OTA_PORT 8266                               //This is the default port for Arduino OTA library.
 
 /*--- Debug/trace settings ---*/
-//#define P1_DEBUG   //Debug the P1 telegram handling
-//#define MQTT_DEBUG //Debug the MQTT handling
+#define P1_DEBUG                                    //Debug the P1 telegram handling
+#define MQTT_DEBUG                                  //Debug the MQTT handling
 
 /*##########^^^ ADAPT VALUES ABOVE TO YOUR CONFIGURATION ^^^##########*/
 
-#define SENSOR_VERSION "0.6" //Sensor client software version
+#define SENSOR_VERSION "0.7"                        //Sensor client software version
 
 /*--- DSMR definitions ---*/
-#define DSMR_VERSION "1-3:0.2.8"       //DSMR version
-#define DSMR_PWR_TIMESTAMP "0-0:1.0.0" //P1 telegram timestamp
-#define DSMR_PWR_LOW "1-0:1.8.1"       //Power consumption meter (low tariff)
-#define DSMR_PWR_HIGH "1-0:1.8.2"      //Power consumption meter (high tariff)
-#define DSMR_RET_LOW "1-0:2.8.1"       //Power return meter (low tariff)
-#define DSMR_RET_HIGH "1-0:2.8.2"      //Power return meter (high tariff)
-#define DSMR_PWR_ACTUAL "1-0:1.7.0"    //Power consumption actual
-#define DSMR_PWR_L1 "1-0:21.7.0"       //Power consumption L1 actual
-#define DSMR_PWR_L2 "1-0:41.7.0"       //Power consumption L2 actual
-#define DSMR_PWR_L3 "1-0:61.7.0"       //Power consumption L3 actual
-#define DSMR_RET_L1 "1-0:22.7.0"       //Power return L1 actual
-#define DSMR_RET_L2 "1-0:42.7.0"       //Power return L2 actual
-#define DSMR_RET_L3 "1-0:62.7.0"       //Power return L3 actual
-#define DSMR_RET_ACTUAL "1-0:2.7.0"    //Power return actual
-#define DSMR_PWR_TARIFF "0-0:96.14.0"  //Power current tariff (1=Low,2=High)
-#define DSMR_GAS_METER "0-1:24.2.1"    //Gas on Kaifa MA105 + Landis+Gyr 350 meters
+#define DSMR_VERSION "1-3:0.2.8"                    //DSMR version
+#define DSMR_PWR_TIMESTAMP "0-0:1.0.0"              //P1 telegram timestamp
+#define DSMR_PWR_LOW "1-0:1.8.1"                    //Power consumption meter (low tariff)
+#define DSMR_PWR_HIGH "1-0:1.8.2"                   //Power consumption meter (high tariff)
+#define DSMR_RET_LOW "1-0:2.8.1"                    //Power return meter (low tariff)
+#define DSMR_RET_HIGH "1-0:2.8.2"                   //Power return meter (high tariff)
+#define DSMR_PWR_ACTUAL "1-0:1.7.0"                 //Power consumption actual
+#define DSMR_PWR_L1 "1-0:21.7.0"                    //Power consumption L1 actual
+#define DSMR_PWR_L2 "1-0:41.7.0"                    //Power consumption L2 actual
+#define DSMR_PWR_L3 "1-0:61.7.0"                    //Power consumption L3 actual
+#define DSMR_RET_L1 "1-0:22.7.0"                    //Power return L1 actual
+#define DSMR_RET_L2 "1-0:42.7.0"                    //Power return L2 actual
+#define DSMR_RET_L3 "1-0:62.7.0"                    //Power return L3 actual
+#define DSMR_RET_ACTUAL "1-0:2.7.0"                 //Power return actual
+#define DSMR_PWR_TARIFF "0-0:96.14.0"               //Power current tariff (1=Low,2=High)
+#define DSMR_GAS_METER "0-1:24.2.1"                 //Gas on Kaifa MA105 + Landis+Gyr 350 meters
 
-const int cnLineLen = 200; //Longest normal line is 178 char (+3 for \r\n\0)
+const int cnLineLen = 250;                          //Longest normal line is 201 char (+3 for \r\n\0)
 
-#define MQTT_VERSION MQTT_VERSION_3_1_1 //The MQTT version we use
+#define MQTT_VERSION MQTT_VERSION_3_1_1             //The MQTT version we use
 
 /*==================================================================================================*
  *                           G L O B A L   V A R I A B L E S                                        *
@@ -398,16 +401,16 @@ bool PublishToTopic(void)
 {
     /*--- create JSON object and fill with meter values
         see https://github.com/bblanchon/ArduinoJson/wiki/API%20Reference ---*/
-    StaticJsonBuffer<800> jsonBuffer; //Be generous: too small will drop last entrie(s)
+    StaticJsonBuffer<800> jsonBuffer;       //Be generous: too small will drop last entrie(s)
     JsonObject &root = jsonBuffer.createObject();
     root["dsmr"] = (String)lDsmrVersion;
     JsonObject &jPwr = root.createNestedObject("power");
-    jPwr["time"] = (String)achPwrTime;   //Power reading timestamp + Summer/Winter time
-    jPwr["tariff"] = (String)lPwrTariff; //Active power tariff (T1 or T2)
+    jPwr["time"] = (String)achPwrTime;      //Power reading timestamp + Summer/Winter time
+    jPwr["tariff"] = (String)lPwrTariff;    //Active power tariff (T1 or T2)
     /*--- Create Gas meter entries ---*/
     JsonObject &jGas = root.createNestedObject("gas");
-    jGas["time"] = (String)achGasTime; //Gas reading timestamp + Summer/Winter time
-    jGas["total"] = (String)lGasMeter; //Gas meter reading (~hourly updated)
+    jGas["time"] = (String)achGasTime;      //Gas reading timestamp + Summer/Winter time
+    jGas["total"] = (String)lGasMeter;      //Gas meter reading (~hourly updated)
     /*---  Create power consumption entries ---*/
     JsonObject &jUse = jPwr.createNestedObject("use");
     JsonObject &jTotalUse = jUse.createNestedObject("total");
@@ -524,15 +527,13 @@ long GetValue(char *pchBuffer, int nMaxLen, bool bMultiply = true)
     /*--- Find start of the value by looking at the corresponding opening bracket '(' ---*/
     int nStart = FindLastChar(pchBuffer, '(', nMaxLen - 1);
     /*--- Do some sanity checks ---*/
-    if (nStart < 8)
-    {
+    if (nStart < 8) {
 #ifdef P1_DEBUG
         Serial.println("ERROR[0]");
 #endif
         return 0;
     }
-    if (nStart > 32)
-    {
+    if (nStart > 32) {
 #ifdef P1_DEBUG
         Serial.println("ERROR[1]");
 #endif
@@ -546,8 +547,7 @@ long GetValue(char *pchBuffer, int nMaxLen, bool bMultiply = true)
         nLen = FindLastChar(pchBuffer, ')', nMaxLen - 1) - nStart - 1;
 
     /*--- Sanity check: values should have between 1 and 12 digits ---*/
-    if (nLen < 1 || nLen > 12)
-    {
+    if (nLen < 1 || nLen > 12) {
 #ifdef P1_DEBUG
         Serial.println("ERROR[5]");
 #endif
@@ -556,10 +556,8 @@ long GetValue(char *pchBuffer, int nMaxLen, bool bMultiply = true)
 
     /*--- Check if it is a valid number and return its value (or 0) ---*/
     char *pchValue = pchBuffer + nStart + 1; //Point at start of value string
-    for (int i = 0; i < nLen; i++)
-    {
-        if (!IsNumber(*(pchValue + i)))
-        {
+    for (int i = 0; i < nLen; i++) {
+        if (!IsNumber(*(pchValue + i))) {
 #ifdef P1_DEBUG
             Serial.println("ERROR[6]");
 #endif
@@ -593,8 +591,7 @@ int GetLastText(char *pchBuffer, int nMaxLen, char *pchText)
 
     /*--- Find start of the text by looking at the corresponding opening bracket '(' ---*/
     int nStart = FindLastChar(pchBuffer, '(', nMaxLen - 1); //9
-    if (nStart < 8 || nStart > 39)
-    { //Do some sanity checks
+    if (nStart < 8 || nStart > 39) { //Do some sanity checks
 #ifdef P1_DEBUG
         Serial.println("ERROR[1]");
 #endif
@@ -603,8 +600,7 @@ int GetLastText(char *pchBuffer, int nMaxLen, char *pchText)
 
     /*--- Look for the ')', terminating the text ---*/
     int nLen = FindLastChar(pchBuffer, ')', nMaxLen - 1) - nStart - 1; //13
-    if (nLen < 1 || nLen > 31)
-    { //Do some more sanity checks
+    if (nLen < 1 || nLen > 31) { //Do some more sanity checks
 #ifdef P1_DEBUG
         Serial.println("ERROR[2]");
 #endif
@@ -637,8 +633,7 @@ bool GetFirstText(char *pchBuffer, int nMaxLen, char *pchText)
 
     /*--- Find start of the text by looking at the corresponding opening bracket '(' ---*/
     int nStart = FindFirstChar(pchBuffer, '(', nMaxLen - 2);
-    if (nStart < 8 || nStart > 12)
-    { //Do some sanity checks
+    if (nStart < 8 || nStart > 12) { //Do some sanity checks
 #ifdef P1_DEBUG
         Serial.println("ERROR[3]");
 #endif
@@ -647,8 +642,7 @@ bool GetFirstText(char *pchBuffer, int nMaxLen, char *pchText)
 
     /*--- Look for the ')', terminating the text ---*/
     int nLen = FindFirstChar(pchBuffer, ')', nMaxLen) - nStart;
-    if (nLen < 1 || nLen > 31)
-    { //Do some more sanity checks
+    if (nLen < 1 || nLen > 31) { //Do some more sanity checks
 #ifdef P1_DEBUG
         Serial.println("ERROR[4]");
 #endif
@@ -681,8 +675,7 @@ bool DecodeTelegram(int nLen)
     bool bValidCrcFound = false;
 
     /*--- Is this the start of P1 telegram line? ---*/
-    if (nStartChar >= 0)
-    {
+    if (nStartChar >= 0) {
         /*--- Start of telegram character found ('/'); restart CRC16 calculation ---*/
         nCurrentCrc = Crc16(0x0000, (unsigned char *)achTelegram + nStartChar, nLen - nStartChar);
 #ifdef P1_DEBUG
@@ -692,8 +685,7 @@ bool DecodeTelegram(int nLen)
 #endif
     }
     /*--- Is this the end of telegram line? ---*/
-    else if (nEndChar >= 0)
-    {
+    else if (nEndChar >= 0) {
         /*--- Add to CRC16 calculation ---*/
         nCurrentCrc = Crc16(nCurrentCrc, (unsigned char *)achTelegram + nEndChar, 1);
         char achMessageCrc[4]; //Buffer for the CRC16 characters
@@ -710,8 +702,7 @@ bool DecodeTelegram(int nLen)
             Serial.println("\nERROR: INVALID CRC FOUND!");
         nCurrentCrc = 0;
     }
-    else
-    {
+    else {
         /*--- This is a data line, update CRC16 ---*/
         nCurrentCrc = Crc16(nCurrentCrc, (unsigned char *)achTelegram, nLen);
 #ifdef P1_DEBUG
@@ -729,8 +720,7 @@ bool DecodeTelegram(int nLen)
 
     // Power reading timestamp (DSMR v4.0)
     // Example: 0-0:1.0.0(180924132132S)
-    if (strncmp(achTelegram, DSMR_PWR_TIMESTAMP, strlen(DSMR_PWR_TIMESTAMP)) == 0)
-    {
+    if (strncmp(achTelegram, DSMR_PWR_TIMESTAMP, strlen(DSMR_PWR_TIMESTAMP)) == 0) {
         nLen = GetLastText(achTelegram, nLen, achPwrTime);
     }
 
@@ -801,8 +791,7 @@ bool DecodeTelegram(int nLen)
 
     // Gas (DSMR v4.0) on Kaifa MA105 and Landis+Gyr 350 meter
     // Example: 0-1:24.2.1(150531200000S)(00811.923*m3)
-    if (strncmp(achTelegram, DSMR_GAS_METER, strlen(DSMR_GAS_METER)) == 0)
-    {
+    if (strncmp(achTelegram, DSMR_GAS_METER, strlen(DSMR_GAS_METER)) == 0) {
         lGasMeter = GetValue(achTelegram, nLen);
         achGasTime[0] = 0;
         (void)GetFirstText(achTelegram, nLen, achGasTime);
@@ -827,13 +816,11 @@ void DoTelegramLines(void)
     int nLen;
     bool bNew = false; //Indicates when new meter data is parsed
 
-    if (hP1Serial.available()) //Any serial data available?
-    {
+    if (hP1Serial.available()) { //Any serial data available?
         memset(achTelegram, 0, sizeof(achTelegram)); //Clear the telegram receive buffer
 
         /*--- Keep reading and decoding telegram lines while available on the P1 interface ---*/
-        while (hP1Serial.available())
-        {
+        while (hP1Serial.available()) {
             nLen = hP1Serial.readBytesUntil('\n', achTelegram, cnLineLen); //Read a line from the P1 telegram
             achTelegram[nLen] = '\n';                                      //Terminate the line
             achTelegram[nLen + 1] = 0;
@@ -844,8 +831,7 @@ void DoTelegramLines(void)
 
         /*--- Send any updated smart meter values to MQTT broker ---*/
         if (bNew)
-            if (!PublishToTopic())
-            {
+            if (!PublishToTopic()) {
                 Serial.print(" MQTT Publish failed, state=");
                 Serial.print(hMqttClient.state());
                 Serial.println("");

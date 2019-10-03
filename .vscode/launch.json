@@ -12,8 +12,8 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "c:/projects/esp/p1-dsmr-interface/.pioenvs/d1_mini/firmware.elf",
-            "toolchainBinDir": "",
+            "executable": "c:/Users/Ron/projects/p1-dsmr-interface/.pio/build/d1_mini/firmware.elf",
+            "toolchainBinDir": "C:/Users/Ron/.platformio/packages/toolchain-xtensa/bin",
             "preLaunchTask": {
                 "type": "PlatformIO",
                 "task": "Pre-Debug"
@@ -24,8 +24,8 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "c:/projects/esp/p1-dsmr-interface/.pioenvs/d1_mini/firmware.elf",
-            "toolchainBinDir": "",
+            "executable": "c:/Users/Ron/projects/p1-dsmr-interface/.pio/build/d1_mini/firmware.elf",
+            "toolchainBinDir": "C:/Users/Ron/.platformio/packages/toolchain-xtensa/bin",
             "internalConsoleOptions": "openOnSessionStart"
         }
     ]

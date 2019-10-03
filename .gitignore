@@ -347,6 +347,7 @@ About
 Press h to open a hovercard with more details.
 
 # Ignore PlatformIO build artifacts
+.pio/
 .pioenvs
 .piolibdeps
 # PlatformIO temporary files
