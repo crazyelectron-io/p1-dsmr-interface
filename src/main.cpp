@@ -115,6 +115,7 @@
  *  v0.6    Extended StaticJsonBuffer to fix overflow issue resulting in last value not being sent.
  *  v0.7    Changed WiFi network to new Unifi AP's (Gondolin) and increased serial buffer for extra
  *          long power outage line (202 characters).
+ *  v0.8    Updated serial init to new EspSerial library (6.4.0).
  *
  *COPYRIGHT:
  *	This program comes with ABSOLUTELY NO WARRANTY. Use at your own risk.
@@ -124,8 +125,8 @@
  *  Some parts are based on other open source code.
  *
  *@file main.cpp
- *@version 0.6
- *@date Sunday, Oct 10, 2018 21:13 UTC
+ *@version 0.8
+ *@date Sunday, Feb 23, 2020 16:43 UTC
  *==================================================================================================*/
 
 /*==================================================================================================*\
@@ -141,12 +142,12 @@
 #include <WiFiUdp.h>
 
 #include <TimeLib.h>
-#include <PubSubClient.h> //Increase MQTT_MAX_PACKET_SIZE to 512 (default 128) !!
+#include <PubSubClient.h>   // Increase MQTT_MAX_PACKET_SIZE to 512 (default 128) !!
 #include <ArduinoJson.h>
 #include <ctype.h>
 
 #include "CRC16.h"
-#include "secrets.h" //Contains all the super secret stuff!
+#include "secrets.h"        // Contains all the super secret stuff!
 
 /*==================================================================================================*\
 |*                               G L O B A L   C O N S T A N T S                                    *|
@@ -168,7 +169,8 @@ const PROGMEM char *MQTT_TOPIC = "sensor/dsmr";     //MQTT topic to create and p
 
 /*--- Define serial input ---*/
 #define SERIAL_RX D5                                //P1 serial input pin
-#define BAUDRATE 115200                             //DSMRv4 runs P1 port at 115,200 baud (8N1)
+#define BAUDRATE 115200                             //DSMRv4 runs P1 port at 115,200 baud,
+#define SERIAL_CONFIG SWSERIAL_8N1                  //  8 data bits, no parity, 1 stop bit (8N1)
 
 /*--- Define OTA port ---*/
 #define OTA_PORT 8266                               //This is the default port for Arduino OTA library.
@@ -179,7 +181,7 @@ const PROGMEM char *MQTT_TOPIC = "sensor/dsmr";     //MQTT topic to create and p
 
 /*##########^^^ ADAPT VALUES ABOVE TO YOUR CONFIGURATION ^^^##########*/
 
-#define SENSOR_VERSION "0.7"                        //Sensor client software version
+#define SENSOR_VERSION "0.8"                        //Sensor client software version
 
 /*--- DSMR definitions ---*/
 #define DSMR_VERSION "1-3:0.2.8"                    //DSMR version
@@ -230,9 +232,9 @@ long lGasMeter = 0;     //Gas meter reading (~hourly updated)
 char achTelegram[cnLineLen];
 
 /*--- Define the P1 serial interface ---*/
-SoftwareSerial hP1Serial(SERIAL_RX, -1, true, cnLineLen); //(RX, TX, inverted, buffer size)
+SoftwareSerial hP1Serial;
 
-/*--- Cummulated CRC16 value ---*/
+/*--- Cumulated CRC16 value ---*/
 unsigned int nCurrentCrc = 0;
 
 /*--- WiFi connection handle/instance ---*/
@@ -861,7 +863,7 @@ void setup()
 
     SetupWiFi(); //Setup the WiFi connection
 
-    hP1Serial.begin(BAUDRATE); //Initialize the P1 serial interface
+    hP1Serial.begin(BAUDRATE, SERIAL_CONFIG, SERIAL_RX, -1, true, cnLineLen); //Initialize the P1 serial interface
 
     SetupOTA(); //Setup OTA update service
 
