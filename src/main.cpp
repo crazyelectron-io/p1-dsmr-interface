@@ -101,8 +101,8 @@
  *
  * NOTE:
  * The default MQTT packet size of the used Arduino PubSubClient library is too small for
- * the messages we are sending. Increase it to 256 in the PubSubClient.h file.
- * Be aware that adding a '#define MQTT_MAX_PACKET_SIZE' it to this source file before the include
+ * the messages we are sending. Increase it to 512 in the PubSubClient.h file.
+ * Be aware that adding a '#define MQTT_MAX_PACKET_SIZE' to this source file before the include
  * doesn't work because of the order the library headers are processed during pre-compile!
  * See also: https://github.com/knolleary/pubsubclient/issues/431.
  *
@@ -116,6 +116,7 @@
  *  v0.7    Changed WiFi network to new Unifi AP's (Gondolin) and increased serial buffer for extra
  *          long power outage line (202 characters).
  *  v0.8    Updated serial init to new EspSerial library (6.4.0).
+ *  v0.9    Dynamically increase MQTT buffer size.
  *
  *COPYRIGHT:
  *	This program comes with ABSOLUTELY NO WARRANTY. Use at your own risk.
@@ -125,8 +126,8 @@
  *  Some parts are based on other open source code.
  *
  *@file main.cpp
- *@version 0.8
- *@date Sunday, Feb 23, 2020 16:43 UTC
+ *@version 0.9
+ *@date Tuesday, Feb 7, 2023 19:43 UTC
  *==================================================================================================*/
 
 /*==================================================================================================*\
@@ -147,7 +148,8 @@
 #include <ctype.h>
 
 #include "CRC16.h"
-#include "secrets.h"        // Contains all the super secret stuff!
+#include "secrets.h"        // Contains all the super secret stuff (not committed to GitHub!)
+
 
 /*==================================================================================================*\
 |*                               G L O B A L   C O N S T A N T S                                    *|
@@ -160,73 +162,71 @@ const char *WIFI_SSID = SECRET_WIFI_SSID;
 const char *WIFI_PWD = SECRET_WIFI_PWD;
 
 /*--- MQTT connection parameters ---*/
-const PROGMEM char *MQTT_CLIENT_ID = "dsmrv4";      //MQTT Client ID
-const PROGMEM char *MQTT_SERVER = "192.168.2.2";    //MQTT Server (Mosquitto)
-const PROGMEM unsigned int MQTT_SERVER_PORT = 1883; //Port# on the MQTT Server
-const PROGMEM char *MQTT_USER = SECRET_MQTT_USER;   //Authentication for the MQTT Server
-const PROGMEM char *MQTT_PWD = SECRET_MQTT_PWD;
-const PROGMEM char *MQTT_TOPIC = "sensor/dsmr";     //MQTT topic to create and publish to
+const PROGMEM char *MQTT_CLIENT_ID = "dsmrv4";                  //MQTT Client ID
+const PROGMEM char *MQTT_SERVER = "mosquitto.moerman.online";   //MQTT Server (Mosquitto)
+const PROGMEM unsigned int MQTT_SERVER_PORT = 1883;             //Port# on the MQTT Server
+const PROGMEM char *MQTT_TOPIC = "sensor/dsmr";                 //MQTT topic to create and publish to
 
 /*--- Define serial input ---*/
-#define SERIAL_RX D5                                //P1 serial input pin
-#define BAUDRATE 115200                             //DSMRv4 runs P1 port at 115,200 baud,
-#define SERIAL_CONFIG SWSERIAL_8N1                  //  8 data bits, no parity, 1 stop bit (8N1)
+#define SERIAL_RX D5                                            //P1 serial input pin
+#define BAUDRATE 115200                                         //DSMRv4 runs P1 port at 115,200 baud,
+#define SERIAL_CONFIG SWSERIAL_8N1                              //  8 data bits, no parity, 1 stop bit (8N1)
 
 /*--- Define OTA port ---*/
-#define OTA_PORT 8266                               //This is the default port for Arduino OTA library.
+#define OTA_PORT 8266                                           //This is the default port for Arduino OTA library.
 
 /*--- Debug/trace settings ---*/
-#define P1_DEBUG                                    //Debug the P1 telegram handling
-#define MQTT_DEBUG                                  //Debug the MQTT handling
+// #define P1_DEBUG                                                //Debug the P1 telegram handling
+// #define MQTT_DEBUG                                              //Debug the MQTT handling
 
 /*##########^^^ ADAPT VALUES ABOVE TO YOUR CONFIGURATION ^^^##########*/
 
-#define SENSOR_VERSION "0.8"                        //Sensor client software version
+#define SENSOR_VERSION "0.9"                                    //Sensor client software version
 
 /*--- DSMR definitions ---*/
-#define DSMR_VERSION "1-3:0.2.8"                    //DSMR version
-#define DSMR_PWR_TIMESTAMP "0-0:1.0.0"              //P1 telegram timestamp
-#define DSMR_PWR_LOW "1-0:1.8.1"                    //Power consumption meter (low tariff)
-#define DSMR_PWR_HIGH "1-0:1.8.2"                   //Power consumption meter (high tariff)
-#define DSMR_RET_LOW "1-0:2.8.1"                    //Power return meter (low tariff)
-#define DSMR_RET_HIGH "1-0:2.8.2"                   //Power return meter (high tariff)
-#define DSMR_PWR_ACTUAL "1-0:1.7.0"                 //Power consumption actual
-#define DSMR_PWR_L1 "1-0:21.7.0"                    //Power consumption L1 actual
-#define DSMR_PWR_L2 "1-0:41.7.0"                    //Power consumption L2 actual
-#define DSMR_PWR_L3 "1-0:61.7.0"                    //Power consumption L3 actual
-#define DSMR_RET_L1 "1-0:22.7.0"                    //Power return L1 actual
-#define DSMR_RET_L2 "1-0:42.7.0"                    //Power return L2 actual
-#define DSMR_RET_L3 "1-0:62.7.0"                    //Power return L3 actual
-#define DSMR_RET_ACTUAL "1-0:2.7.0"                 //Power return actual
-#define DSMR_PWR_TARIFF "0-0:96.14.0"               //Power current tariff (1=Low,2=High)
-#define DSMR_GAS_METER "0-1:24.2.1"                 //Gas on Kaifa MA105 + Landis+Gyr 350 meters
+#define DSMR_VERSION "1-3:0.2.8"                //DSMR version
+#define DSMR_PWR_TIMESTAMP "0-0:1.0.0"          //P1 telegram timestamp
+#define DSMR_PWR_LOW "1-0:1.8.1"                //Power consumption meter (low tariff)
+#define DSMR_PWR_HIGH "1-0:1.8.2"               //Power consumption meter (high tariff)
+#define DSMR_RET_LOW "1-0:2.8.1"                //Power return meter (low tariff)
+#define DSMR_RET_HIGH "1-0:2.8.2"               //Power return meter (high tariff)
+#define DSMR_PWR_ACTUAL "1-0:1.7.0"             //Power consumption actual
+#define DSMR_PWR_L1 "1-0:21.7.0"                //Power consumption L1 actual
+#define DSMR_PWR_L2 "1-0:41.7.0"                //Power consumption L2 actual
+#define DSMR_PWR_L3 "1-0:61.7.0"                //Power consumption L3 actual
+#define DSMR_RET_L1 "1-0:22.7.0"                //Power return L1 actual
+#define DSMR_RET_L2 "1-0:42.7.0"                //Power return L2 actual
+#define DSMR_RET_L3 "1-0:62.7.0"                //Power return L3 actual
+#define DSMR_RET_ACTUAL "1-0:2.7.0"             //Power return actual
+#define DSMR_PWR_TARIFF "0-0:96.14.0"           //Power current tariff (1=Low,2=High)
+#define DSMR_GAS_METER "0-1:24.2.1"             //Gas on Kaifa MA105 + Landis+Gyr 350 meters
 
-const int cnLineLen = 250;                          //Longest normal line is 201 char (+3 for \r\n\0)
+const int cnLineLen = 250;                                      //Longest normal line is 201 char (+3 for \r\n\0)
 
-#define MQTT_VERSION MQTT_VERSION_3_1_1             //The MQTT version we use
+#define MQTT_VERSION MQTT_VERSION_3_1_1                         //The MQTT version we use
 
 /*==================================================================================================*
  *                           G L O B A L   V A R I A B L E S                                        *
  *==================================================================================================*/
 
 /*--- Variables to store the relevant meter readings ---*/
-long lDsmrVersion = 0;  //DSMR telegram version number
-char achPwrTime[16];    //Timestamp of power reading
-long lPwrLow = 0;       //Power consumption low tariff
-long lPwrHigh = 0;      //Power consumption high tariff
-long lPwrActual = 0;    //Power actual consumption
-long lPwrL1 = 0;        //Power actual L1 consumption
-long lPwrL2 = 0;        //Power actual L2 consumption
-long lPwrL3 = 0;        //Power actual L3 consumption
-long lReturnLow = 0;    //Power return low tariff (solar panels)
-long lReturnHigh = 0;   //Power return high tariff (solar panels)
-long lReturnActual = 0; //Power actual return (solar panels)
-long lReturnL1 = 0;     //Power actual L1 return
-long lReturnL2 = 0;     //Power actual L2 return
-long lReturnL3 = 0;     //Power actual L3 return
-long lPwrTariff = 0;    //Active power tariff (T1 or T2)
-char achGasTime[16];    //Timestamp of gas reading
-long lGasMeter = 0;     //Gas meter reading (~hourly updated)
+long lDsmrVersion = 0;          //DSMR telegram version number
+char achPwrTime[16];            //Timestamp of power reading
+long lPwrLow = 0;               //Power consumption low tariff
+long lPwrHigh = 0;              //Power consumption high tariff
+long lPwrActual = 0;            //Power actual consumption
+long lPwrL1 = 0;                //Power actual L1 consumption
+long lPwrL2 = 0;                //Power actual L2 consumption
+long lPwrL3 = 0;                //Power actual L3 consumption
+long lReturnLow = 0;            //Power return low tariff (solar panels)
+long lReturnHigh = 0;           //Power return high tariff (solar panels)
+long lReturnActual = 0;         //Power actual return (solar panels)
+long lReturnL1 = 0;             //Power actual L1 return
+long lReturnL2 = 0;             //Power actual L2 return
+long lReturnL3 = 0;             //Power actual L3 return
+long lPwrTariff = 0;            //Active power tariff (T1 or T2)
+char achGasTime[16];            //Timestamp of gas reading
+long lGasMeter = 0;             //Gas meter reading (~hourly updated)
 
 /*--- Buffer for storing and processing a line of the P1 telegram --- */
 char achTelegram[cnLineLen];
@@ -355,9 +355,11 @@ bool ConnectMqtt(void)
         for (int nLoop = 0; nLoop < 5; ++nLoop)
         {
             /*--- Attempt to connect ---*/
-            if (hMqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PWD))
+            if (hMqttClient.connect(MQTT_CLIENT_ID))
             {
-                Serial.print("connected as Publish client with topic ");
+                Serial.print("connected as ");
+                Serial.print(MQTT_CLIENT_ID);
+                Serial.print(" with topic ");
                 Serial.println(MQTT_TOPIC);
                 return true; //We're done!
             }
@@ -385,6 +387,13 @@ bool ConnectMqtt(void)
 #ifdef MQTT_DEBUG
     Serial.println("MQTT connecting alive");
 #endif
+
+    // /*--- Increase MQTT buffer size ---*/
+    // if (!hMqttClient.setBufferSize(512)) {
+    //     Serial.println("MQTT buffer increase failed!");
+    //     return false;
+    // }
+
     return true; //We were already connected
 }
 
